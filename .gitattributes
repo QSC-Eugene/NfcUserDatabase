@@ -1,0 +1,3 @@
+#Treat Simpl Windows files as binary
+*.smw binary
+*.umc binary
