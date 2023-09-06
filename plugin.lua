@@ -10,6 +10,8 @@ local Colors = {
   PluginColor = {147,169,213}
 }
 
+local NumberOfLines = 20
+
 -- Define the color of the plugin object in the design
 function GetColor(props)
   return Colors.PluginColor
@@ -17,12 +19,12 @@ end
 
 -- The name that will initially display when dragged into a design
 function GetPrettyName(props)
-  return PluginInfo.Name .. "\r" .. PluginInfo.Version
+  return PluginInfo.Name .. "\rv" .. PluginInfo.BuildVersion
   -- return "Vaddio" .. props["Model"].Value .. " " .. PluginInfo.Version
 end
 
 -- Optional function used if plugin has multiple pages
-PageNames = {"Main"} --List the pages within the plugin
+PageNames = {"Users","UserModification","Interfaces"} --List the pages within the plugin
 function GetPages(props)
   local pages = {}
   --[[ #include "pages.lua" ]]
