@@ -1,6 +1,7 @@
 -- table.insert(ctrls,{Name = "code",ControlType = "Text",PinStyle = "Input",Count = 1})
 
 local NumerOfInterfaces = props["Number Of Interfaces"].Value
+local NumerOfPinOnlyUCIs = props["Number Of Pin Only UCIs"].Value
 
 table.insert(
   ctrls,
@@ -60,6 +61,16 @@ table.insert(
 table.insert(
   ctrls,
   {
+    Name = "UniquePin",
+    ControlType = "Indicator",
+    IndicatorType = "Led",
+    PinStyle = "Output",
+    UserPin = true,
+  }
+)
+table.insert(
+  ctrls,
+  {
     Name = "Created",
     ControlType = "Indicator",
     IndicatorType = "Text",
@@ -80,14 +91,14 @@ table.insert(
 table.insert(
   ctrls,
   {
-    Name = HistoryLength,
+    Name = "HistoryLength",
     ControlType = "Knob",
     ControlUnit = "Integer",
     Min = 3,
     Max = 100,
     DefaultValue = 10,
-    PinStyle = "None",
-    UserPin = false,
+    PinStyle = "Both",
+    UserPin = true,
   }
 )
 table.insert(
@@ -123,6 +134,19 @@ table.insert(
     UserPin = false,
     Count = NumberOfLines,
     Icon = "X Circle",
+    IconType = "Icon"
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "ListEdit",
+    ControlType = "Button",
+    ButtonType = "Trigger",
+    PinStyle = "None",
+    UserPin = false,
+    Count = NumberOfLines,
+    Icon = "Clipboard Pencil",
     IconType = "Icon"
   }
 )
@@ -222,5 +246,35 @@ table.insert(
     PinStyle = "Both",
     UserPin = true,
     Count = NumerOfInterfaces > 1 and NumerOfInterfaces or 2,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "Uci_Name",
+    ControlType = "Text",
+    PinStyle = "Both",
+    UserPin = true,
+    Count = NumerOfPinOnlyUCIs > 1 and NumerOfPinOnlyUCIs or 2,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "Uci_Status",
+    ControlType = "Text",
+    PinStyle = "Both",
+    UserPin = true,
+    Count = NumerOfPinOnlyUCIs > 1 and NumerOfPinOnlyUCIs or 2,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "PinEntry",
+    ControlType = "Text",
+    PinStyle = "Input",
+    UserPin = true,
+    Count = (NumerOfInterfaces + NumerOfPinOnlyUCIs) > 1 and (NumerOfInterfaces + NumerOfPinOnlyUCIs) or 2,
   }
 )

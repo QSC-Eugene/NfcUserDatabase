@@ -1,5 +1,8 @@
 rapidjson = require("rapidjson")
 
+local NumberofInterfaces = Properties["Number Of Interfaces"].Value
+local NumberofPinOnlyUCIs = Properties["Number Of Pin Only UCIs"].Value
+
 local DatabaseDir = "media/NfcTags.json"
 local Database = rapidjson.decode('{"Tags": []"}')
 local BaseTag = {
@@ -13,25 +16,11 @@ local BaseTag = {
     ["Location"] = ""
   }
 }
-local ClearTime = 3
-
--- local TouchScreens = {
---   {
---     ["TSC_Name"] = "TscG310-Reception", ["Sensor"] = Component.New("Sensors_TscG310-Reception"), ["UCI"] = "Reception"
---   },
---   {
---     ["TSC_Name"] = "TSCG35-1", ["Sensor"] = Component.New("Sensors_TscG35-1"), ["UCI"] = "BallroomA"
---   },
---   {
---     ["TSC_Name"] = "TSCG35-2", ["Sensor"] = Component.New("Sensors_TscG35-2"), ["UCI"] = "BallroomB"
---   },
--- }
+local ClearTime = 3 -- seconds
 
 local PanelChoices = {"Off"}
 local ModeChoices = {"Off", "Read", "Add", "Remove"}
 local AccessLevelChoices = {"User", "Admin"}
-local Sensors = {}
-local StatusBlocks = {}
 Controls.LearningMode.Choices = ModeChoices
 Controls.LearningMode.String = ModeChoices[1]
 Controls.AccessLevel.Choices = AccessLevelChoices
@@ -39,11 +28,9 @@ Controls.AccessLevel.String = AccessLevelChoices[1]
 Controls.LearningPanel.String = PanelChoices[1]
 
 function GetSensors()
-  Sensors = {}
   local Choices = {}
   for _, comp in pairs(Component.GetComponents()) do
     if comp.Type == "touchscreen_sensors" then
-      Sensors[comp.Name] = comp
       table.insert(Choices, comp.Name)
     end
   end
@@ -52,27 +39,39 @@ function GetSensors()
   end
 end
 function GetStatus()
-  StatusBlocks = {}
   local Choices = {}
+  local UciChoices = {}
   for _, comp in pairs(Component.GetComponents()) do
     if comp.Type == "touch_screen_status" then
-      StatusBlocks[comp.Name] = comp
       table.insert(Choices, comp.Name)
+      table.insert(UciChoices, comp.Name)
+    elseif comp.Type == "uci_viewer" then
+      table.insert(UciChoices, comp.Name)
     end
   end
   for _, ctrl in ipairs(Controls.TSC_Status) do
     ctrl.Choices = Choices
   end
+  for _, ctrl in ipairs(Controls.Uci_Status) do
+    ctrl.Choices = UciChoices
+  end
 end
-function GetTscPanels()
-  local Choices = {}
+
+function GetPanels()
+  local TscChoices = {}
+  local UciChoices = {}
   for _, device in pairs(Design.GetInventory()) do
     if device.Model:match("TSC%-%d+%-G3") then
-      table.insert(Choices, device.Name)
+      table.insert(TscChoices, device.Name)
+    elseif device.Model:match("TSC") or device.Model:match("UCI") then
+      table.insert(UciChoices, device.Name)
     end
   end
   for _, ctrl in ipairs(Controls.TSC_Name) do
-    ctrl.Choices = Choices
+    ctrl.Choices = TscChoices
+  end
+  for _, ctrl in ipairs(Controls.Uci_Name) do
+    ctrl.Choices = UciChoices
   end
 end
 
@@ -84,7 +83,8 @@ function SetupSensors()
     local Status = Component.New(Controls.TSC_Status[i].String)
     if name ~= "" and Sensor["nfc.clear"] ~= nil and Status["current.uci"] ~= nil then
       print(
-        "Setting up " .. name .. " with " .. Controls.TSC_Sensor[i].String .. " and " .. Controls.TSC_Status[i].String
+        "Setting up NFC for " ..
+          name .. " with " .. Controls.TSC_Sensor[i].String .. " and " .. Controls.TSC_Status[i].String
       )
       table.insert(LearningChoices, name)
       Sensor["nfc.clear"]:Trigger()
@@ -92,18 +92,52 @@ function SetupSensors()
         if ctrl.String ~= "" then
           local UID = ctrl.String
           print(name .. ": " .. UID)
-          if name == Controls.LearningPanel.String then 
+          if name == Controls.LearningPanel.String then
             ProcessTag(UID)
-          else 
-            accessLevel, username = CheckTag(UID,name)
-            Login(accessLevel,username,Status["current.uci"].String)
-          end 
+          else
+            accessLevel, username = CheckTag(UID, name)
+            Login(accessLevel, username, Status["current.uci"].String)
+          end
           Sensor["nfc.clear"]:Trigger()
         end
       end
     end
   end
   Controls.LearningPanel.Choices = LearningChoices
+end
+function SetupPinAccess()
+  for i = 1, NumberofInterfaces do
+    local name = Controls.TSC_Name[i].String
+    local Status = Component.New(Controls.TSC_Status[i].String)
+    if name ~= "" and Status["current.uci"] ~= nil then
+      print("Setting up PinAccess for " .. name .. " with " .. Controls.TSC_Status[i].String)
+      Controls.PinEntry[i].EventHandler = function(ctrl)
+        if ctrl.String ~= "" then
+          local accessLevel, username = PinCheck(ctrl.String, name)
+          Login(accessLevel, username, Status["current.uci"].String)
+          ctrl.String = ""
+        end
+      end
+    else
+      Controls.PinEntry[i].EventHandler = nil
+    end
+  end
+  for i = 1, NumberofPinOnlyUCIs do
+    local name = Controls.Uci_Name[i].String
+    local Status = Component.New(Controls.Uci_Status[i].String)
+    if name ~= "" and Status["current.uci"] ~= nil then
+      print("Setting up PinAccess for " .. name .. " with " .. Controls.Uci_Status[i].String)
+      Controls.PinEntry[i + NumberofInterfaces].EventHandler = function(ctrl)
+        if ctrl.String ~= "" then
+          local accessLevel, username = PinCheck(ctrl.String, name)
+          Login(accessLevel, username, Status["current.uci"].String)
+          ctrl.String = ""
+        end
+      end
+    else
+      Controls.PinEntry[i + NumberofInterfaces].EventHandler = nil
+    end
+  end
 end
 
 function LoadDatabase()
@@ -207,26 +241,51 @@ function CheckTag(UID, location)
   end
   return -1, "Unknown Tag"
 end
+function PinCheck(pin, location)
+  for _, tag in ipairs(Database.Tags) do
+    if tonumber(tag.PIN) == tonumber(pin) then
+      if location then -- add history when used
+        table.insert(tag.History, 1, {["Time"] = os.time(), ["Location"] = location})
+        while (#tag.History > Controls.HistoryLength.Value) do
+          table.remove(tag.History)
+        end
+        rapidjson.dump(Database, DatabaseDir)
+      end
+      return tag.AccessLevel, tag.UserName
+    end
+  end
+  return -1, "Unknown Pin"
+end
 
-function Login(accessLevel,name,uci)
-  print("Login",accessLevel,name,uci)
+function Login(accessLevel, name, uci)
+  print("Login", accessLevel, name, uci)
   local name = name or ""
-  if uci ~= nil then 
+  if uci ~= nil then
     if accessLevel >= 0 then --valid user
-      Uci.SetVariable(uci,"Admin",accessLevel >= 1)
-      Uci.SetVariable(uci,"Locked",false)
-      Uci.SetVariable(uci,"UserName",'"'..name..'"')
-    else 
-      print("Invalid Login:",name)
-    end 
-  end 
-end 
+      Uci.SetVariable(uci, "IsAdmin", accessLevel >= 1)
+      Uci.SetVariable(uci, "Locked", false)
+      Uci.SetVariable(uci, "UserName", '"' .. name .. '"')
+    else
+      print("Invalid Login:", name)
+    end
+  end
+end
+
+function ClearList()
+  for i = 1, NumberOfLines do
+    Controls["ListName"][i].String = ""
+    Controls["ListUID"][i].String = ""
+    Controls["ListCreated"][i].String = ""
+    Controls["ListAccessLevel"][i].String = ""
+  end
+end
 
 function RefreshList()
+  ClearList()
   if Database.Tags and #Database.Tags <= NumberOfLines then
     Controls.ListScroll.IsInvisible = true
-    for i,user in ipairs(Database.Tags) do
-      print(user.UserName,user.UID,os.date("%e %b %Y %H:%M:%S%p", user.Created))
+    for i, user in ipairs(Database.Tags) do
+      print(user.UserName, user.UID, os.date("%e %b %Y %H:%M:%S%p", user.Created))
       Controls["ListName"][i].String = user.UserName
       Controls["ListUID"][i].String = user.UID
       Controls["ListCreated"][i].String = os.date("%e %b %Y %H:%M:%S%p", user.Created)
@@ -238,7 +297,7 @@ function RefreshList()
     local clicks = #Database.Tags - NumberOfLines + 1
     local scrollSize = 100 / clicks
     local start = scroll ~= 100 and math.floor(scroll / scrollSize) or clicks - 1
-    print("Scroll", scroll, clicks, scrollSize,start)
+    print("Scroll", scroll, clicks, scrollSize, start)
     for i = 1, NumberOfLines do
       local user = Database.Tags[start + i]
       Controls["ListName"][i].String = user.UserName
@@ -258,28 +317,89 @@ function ResetControls()
   Controls.Created.String = ""
   Controls.History.String = ""
   Controls.ListScroll.Value = 100
+  for i = 1, NumberOfLines do
+    Controls["ListName"][i].String = ""
+    Controls["ListUID"][i].String = ""
+    Controls["ListCreated"][i].String = ""
+    Controls["ListAccessLevel"][i].String = ""
+  end
 end
 function Initialize()
-  GetTscPanels()
+  Controls.EnableListDelete.Boolean = false
+  GetPanels()
   GetSensors()
   GetStatus()
 
+  EnableListDelete()
   ResetControls()
   LoadDatabase()
   RefreshList()
   SetupSensors()
+  SetupPinAccess()
+end
+
+function VerifyUniquePin(pin)
+  if tostring(pin):len() < 4 or tostring(pin):len() > 12 then
+    return false
+  end
+  for _, tag in ipairs(Database.Tags) do
+    if tag.PIN == pin then
+      return false
+    end
+  end
+  return true
+end
+
+function EnableListDelete()
+  for i = 1, NumberOfLines do
+    Controls["ListDelete"][i].IsDisabled = not Controls.EnableListDelete.Boolean
+  end
+end
+Controls.EnableListDelete.EventHandler = EnableListDelete
+
+for i, ctrl in ipairs(Controls.ListDelete) do
+  ctrl.EventHandler = function()
+    local UID = Controls["ListUID"][i].String
+    local name = Controls["ListName"][i].String
+    if RemoveTag(UID) then
+      print("Removed " .. name)
+    end
+  end
 end
 
 for _, ctrl in ipairs(Controls.TSC_Name) do
-  ctrl.EventHandler = SetupSensors
+  ctrl.EventHandler = function()
+    SetupSensors()
+    SetupPinAccess()
+  end
 end
 for _, ctrl in ipairs(Controls.TSC_Sensor) do
   ctrl.EventHandler = SetupSensors
 end
 for _, ctrl in ipairs(Controls.TSC_Status) do
-  ctrl.EventHandler = SetupSensors
+  ctrl.EventHandler = function()
+    SetupSensors()
+    SetupPinAccess()
+  end
+end
+for _, ctrl in ipairs(Controls.Uci_Name) do
+  ctrl.EventHandler = function()
+    SetupPinAccess()
+  end
+end
+for _, ctrl in ipairs(Controls.Uci_Status) do
+  ctrl.EventHandler = function()
+    SetupPinAccess()
+  end
 end
 Controls.RefreshList.EventHandler = RefreshList
 Controls.ListScroll.EventHandler = RefreshList
+Controls.BackupPin.EventHandler = function()
+  if Controls.LearningMode.String == "Add" then
+    Controls.UniquePin.Boolean = VerifyUniquePin(Controls.BackupPin.String)
+  else
+    Controls.UniquePin.Boolean = false
+  end
+end
 
 Initialize()

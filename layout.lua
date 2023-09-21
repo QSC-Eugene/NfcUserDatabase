@@ -4,20 +4,23 @@ local DefaultControlHeight = 24
 
 local CurrentPageIndex = props["page_index"].Value
 local NumerOfInterfaces = props["Number Of Interfaces"].Value
+local NumerOfPinOnlyUCIs = props["Number Of Pin Only UCIs"].Value
 
-if CurrentPageIndex == 1 then
+if CurrentPageIndex == 1 then --List
   layout["RefreshList"] = {
     Style = "Button",
     ButtonStyle = "Trigger",
     Size = {50,50},
-    Position = {500, 30}, 
+    Position = {550, 30}, 
+    PrettyName = "List~Refresh"
   }
   layout["EnableListDelete"] = {
     Style = "Button",
     ButtonStyle = "Toggle",
     Legend = "Enable\rDelete",
     Size = {50,50},
-    Position = {500, 90},
+    Position = {550, 90},
+    PrettyName = "List~Enable Delete"
   }
   layout["ListScroll"] = {
     Style = "Fader",
@@ -97,8 +100,18 @@ if CurrentPageIndex == 1 then
       margin = 0,
       Padding = 0,
     }
+    layout["ListEdit "..i] = {
+      Style = "Button",
+      ButtonStyle = "Trigger",
+      Size = {DefaultControlHeight, DefaultControlHeight},
+      Position = {500, 10 + (i) * DefaultControlHeight}, 
+      margin = 0,
+      Padding = 0,
+    }
   end
-elseif CurrentPageIndex == 2 then --UserModification
+
+elseif CurrentPageIndex == 2 then --UserEdit
+elseif CurrentPageIndex == 3 then --TagLearning
   table.insert(
     graphics,
     {
@@ -183,6 +196,12 @@ elseif CurrentPageIndex == 2 then --UserModification
     Size = {100, DefaultControlHeight},
     Position = {110, 160}, 
   }
+  layout["UniquePin"] = {
+    Style = "Led",
+    Size = {DefaultControlHeight, DefaultControlHeight},
+    Position = {220, 160},
+    Color = {0,0,255}
+  }
   table.insert(
     graphics,
     {
@@ -213,7 +232,7 @@ elseif CurrentPageIndex == 2 then --UserModification
   }
 
 
-elseif CurrentPageIndex == 3 then --Interfaces
+elseif CurrentPageIndex == 4 then --Interfaces
   table.insert(
     graphics,
     {
@@ -246,17 +265,51 @@ elseif CurrentPageIndex == 3 then --Interfaces
       Style = "ComboBox",
       Size = {100, DefaultControlHeight},
       Position = {10, 10 + (i) * DefaultControlHeight}, 
+      PrettyName = "Tsc"..i.."~Name",
     }
     layout["TSC_Sensor "..i] = {
       Style = "ComboBox",
       Size = {200, DefaultControlHeight},
       Position = {110, 10 + (i) * DefaultControlHeight}, 
+      PrettyName = "Tsc"..i.."~Sensor",
     }
     layout["TSC_Status "..i] = {
       Style = "ComboBox",
       Size = {200, DefaultControlHeight},
       Position = {310, 10 + (i) * DefaultControlHeight}, 
+      PrettyName = "Tsc"..i.."~StatusComponent",
+    }
+  end
+  for i = 1, NumerOfPinOnlyUCIs do
+    layout["Uci_Name "..i] = {
+      Style = "ComboBox",
+      Size = {100, DefaultControlHeight},
+      Position = {10, 10 + (i + NumerOfInterfaces) * DefaultControlHeight}, 
+      PrettyName = "Uci"..i.."~Name",
+    }
+    layout["Uci_Status "..i] = {
+      Style = "ComboBox",
+      Size = {200, DefaultControlHeight},
+      Position = {310, 10 + (i + NumerOfInterfaces) * DefaultControlHeight}, 
+      PrettyName = "Uci"..i.."~StatusComponent",
     }
   end
 
 end
+
+for i = 1, NumerOfInterfaces do
+  layout["PinEntry "..i] = {
+    Style = "None",
+    PrettyName = "Tsc"..i.."~PinEntry",
+  }
+end
+for i = 1, NumerOfPinOnlyUCIs do
+  layout["PinEntry "..(i + NumerOfInterfaces)] = {
+    Style = "None",
+    PrettyName = "Uci"..i.."~PinEntry",
+  }
+end
+layout["HistoryLength"] = {
+  Style = "None",
+  PrettyName = "History Length",
+}
