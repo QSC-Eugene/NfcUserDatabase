@@ -111,6 +111,87 @@ if CurrentPageIndex == 1 then --List
   end
 
 elseif CurrentPageIndex == 2 then --UserEdit
+  table.insert(
+    graphics,
+    {
+      Type = "Label",
+      Text = "User Name",
+      Position = {10, 10},
+      Size = {100, DefaultControlHeight},
+    }
+  )
+  layout["UserEditName"] = {
+    Style = "Text",
+    Size = {100, DefaultControlHeight},
+    Position = {110, 10}, 
+  }
+  table.insert(
+    graphics,
+    {
+      Type = "Label",
+      Text = "UID",
+      Position = {10, 40},
+      Size = {100, DefaultControlHeight},
+    }
+  )
+  layout["UserEditUID"] = {
+    Style = "Text",
+    Size = {100, DefaultControlHeight},
+    Position = {110, 40}, 
+  }
+  layout["UserEditUidGen"] = {
+    Style = "Button",
+    ButtonStyle = "Trigger",
+    Size = {DefaultControlHeight,DefaultControlHeight},
+    Position = {220, 40}, 
+    PrettyName = "UserEdit~UID Gen",
+  }
+  table.insert(
+    graphics,
+    {
+      Type = "Label",
+      Text = "Access Level",
+      Position = {10, 70},
+      Size = {100, DefaultControlHeight},
+    }
+  )
+  layout["UserEditAccessLevel"] = {
+    Style = "ComboBox",
+    Size = {100, DefaultControlHeight},
+    Position = {110, 70}, 
+  }
+  table.insert(
+    graphics,
+    {
+      Type = "Label",
+      Text = "Pin",
+      Position = {10, 100},
+      Size = {100, DefaultControlHeight},
+    }
+  )
+  layout["UserEditPin"] = {
+    Style = "Text",
+    Size = {100, DefaultControlHeight},
+    Position = {110, 100}, 
+  }
+  layout["UserEditUniquePin"] = {
+    Style = "Led",
+    Size = {DefaultControlHeight, DefaultControlHeight},
+    Position = {220, 100},
+    Color = {0,0,255}
+  }
+  layout["UserEditSave"] = {
+    Style = "Button",
+    ButtonStyle = "Trigger",
+    Size = {50, 50},
+    Position = {270, 10}, 
+  }
+  layout["UserEditClear"] = {
+    Style = "Button",
+    ButtonStyle = "Trigger",
+    Size = {50, 50},
+    Position = {270, 70}, 
+  }
 elseif CurrentPageIndex == 3 then --TagLearning
   table.insert(
     graphics,

@@ -1,8 +1,8 @@
 PluginInfo = {
   Name = "NFC User Database",
   Author = "Eugene Dunn",
-  BuildVersion = "0.0.3.0",
-  Version = "0.0",
+  BuildVersion = "0.1.0.0",
+  Version = "0.1",
   Id = "b8a5f6f0-2064-4c3d-9dc6-8a5684b6c846",
   Description = ""
 }
@@ -145,7 +145,8 @@ function GetControls(props)
     ctrls,
     {
       Name = "UID",
-      ControlType = "Text",
+      ControlType = "Indicator",
+      IndicatorType = "Text",
       PinStyle = "None",
       UserPin = false,
     }
@@ -235,7 +236,7 @@ function GetControls(props)
       PinStyle = "None",
       UserPin = false,
       Count = NumberOfLines,
-      Icon = "X Circle",
+      Icon = "Trash",
       IconType = "Icon"
     }
   )
@@ -380,6 +381,89 @@ function GetControls(props)
       Count = (NumerOfInterfaces + NumerOfPinOnlyUCIs) > 1 and (NumerOfInterfaces + NumerOfPinOnlyUCIs) or 2,
     }
   )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditName",
+      ControlType = "Text",
+      PinStyle = "Both",
+      UserPin = true,
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditUID",
+      ControlType = "Text",
+      PinStyle = "Both",
+      UserPin = true,
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditAccessLevel",
+      ControlType = "Text",
+      PinStyle = "Both",
+      UserPin = true,
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditPin",
+      ControlType = "Text",
+      PinStyle = "Both",
+      UserPin = true,
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditSave",
+      ControlType = "Button",
+      ButtonType = "Trigger",
+      PinStyle = "Input",
+      UserPin = true,
+      Icon = "Save",
+      IconType = "Icon"
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditClear",
+      ControlType = "Button",
+      ButtonType = "Trigger",
+      PinStyle = "Input",
+      UserPin = true,
+      IconType = "Icon",
+      Icon = "X Circle",
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditUidGen",
+      ControlType = "Button",
+      ButtonType = "Trigger",
+      PinStyle = "Input",
+      UserPin = true,
+      IconType = "Icon",
+      Icon = "Refresh",
+    }
+  )
+  table.insert(
+    ctrls,
+    {
+      Name = "UserEditUniquePin",
+      ControlType = "Indicator",
+      IndicatorType = "Led",
+      PinStyle = "Output",
+      UserPin = true,
+    }
+  )
+  
   return ctrls
 end
 
@@ -500,6 +584,87 @@ function GetControlLayout(props)
     end
   
   elseif CurrentPageIndex == 2 then --UserEdit
+    table.insert(
+      graphics,
+      {
+        Type = "Label",
+        Text = "User Name",
+        Position = {10, 10},
+        Size = {100, DefaultControlHeight},
+      }
+    )
+    layout["UserEditName"] = {
+      Style = "Text",
+      Size = {100, DefaultControlHeight},
+      Position = {110, 10}, 
+    }
+    table.insert(
+      graphics,
+      {
+        Type = "Label",
+        Text = "UID",
+        Position = {10, 40},
+        Size = {100, DefaultControlHeight},
+      }
+    )
+    layout["UserEditUID"] = {
+      Style = "Text",
+      Size = {100, DefaultControlHeight},
+      Position = {110, 40}, 
+    }
+    layout["UserEditUidGen"] = {
+      Style = "Button",
+      ButtonStyle = "Trigger",
+      Size = {DefaultControlHeight,DefaultControlHeight},
+      Position = {220, 40}, 
+      PrettyName = "UserEdit~UID Gen",
+    }
+    table.insert(
+      graphics,
+      {
+        Type = "Label",
+        Text = "Access Level",
+        Position = {10, 70},
+        Size = {100, DefaultControlHeight},
+      }
+    )
+    layout["UserEditAccessLevel"] = {
+      Style = "ComboBox",
+      Size = {100, DefaultControlHeight},
+      Position = {110, 70}, 
+    }
+    table.insert(
+      graphics,
+      {
+        Type = "Label",
+        Text = "Pin",
+        Position = {10, 100},
+        Size = {100, DefaultControlHeight},
+      }
+    )
+    layout["UserEditPin"] = {
+      Style = "Text",
+      Size = {100, DefaultControlHeight},
+      Position = {110, 100}, 
+    }
+    layout["UserEditUniquePin"] = {
+      Style = "Led",
+      Size = {DefaultControlHeight, DefaultControlHeight},
+      Position = {220, 100},
+      Color = {0,0,255}
+    }
+    layout["UserEditSave"] = {
+      Style = "Button",
+      ButtonStyle = "Trigger",
+      Size = {50, 50},
+      Position = {270, 10}, 
+    }
+    layout["UserEditClear"] = {
+      Style = "Button",
+      ButtonStyle = "Trigger",
+      Size = {50, 50},
+      Position = {270, 70}, 
+    }
   elseif CurrentPageIndex == 3 then --TagLearning
     table.insert(
       graphics,
@@ -734,7 +899,17 @@ if Controls then
   Controls.LearningMode.String = ModeChoices[1]
   Controls.AccessLevel.Choices = AccessLevelChoices
   Controls.AccessLevel.String = AccessLevelChoices[1]
+  Controls.UserEditAccessLevel.Choices = AccessLevelChoices
   Controls.LearningPanel.String = PanelChoices[1]
+  
+  function IndexOfKV(table, key, value)
+    for i, v in ipairs(table) do
+      if v[key] == value then
+        return i
+      end
+    end
+    return nil
+  end
   
   function GetSensors()
     local Choices = {}
@@ -892,31 +1067,44 @@ if Controls then
         tonumber(Controls.BackupPin.String)
       )
       ResetControls()
+      RefreshList()
       Controls.LearningMode.String = "Off"
     elseif mode == "Remove" then
       RemoveTag(UID)
       ResetControls()
+      RefreshList()
       Controls.LearningMode.String = "Off"
     end
   end
   
   function AddTag(UID, accessLevel, userName, backupPin)
+    -- Chech for existing tag
+  
     if UID then
       local accessLevel = accessLevel or 0
       local userName = userName or "TAG:" .. UID
       local created = os.time()
       local backupPin = backupPin or ""
-      table.insert(
-        Database.Tags,
-        {
-          ["UID"] = UID,
-          ["AccessLevel"] = accessLevel, -- 0=User, 1=Admin, 2=SuperAdmin
-          ["UserName"] = userName,
-          ["Created"] = created,
-          ["PIN"] = backupPin,
-          ["History"] = {}
-        }
-      )
+      local ExistingTagIndex = IndexOfKV(Database.Tags, "UID", UID)
+      if ExistingTagIndex ~= nil then
+        print("Tag already exists, updating")
+        Database.Tags[ExistingTagIndex].AccessLevel = accessLevel
+        Database.Tags[ExistingTagIndex].UserName = userName
+        Database.Tags[ExistingTagIndex].PIN = backupPin
+      else
+        print("Adding Tag")
+        table.insert(
+          Database.Tags,
+          {
+            ["UID"] = UID,
+            ["AccessLevel"] = accessLevel, -- 0=User, 1=Admin, 2=SuperAdmin
+            ["UserName"] = userName,
+            ["Created"] = created,
+            ["PIN"] = backupPin,
+            ["History"] = {}
+          }
+        )
+      end
       rapidjson.dump(Database, DatabaseDir)
       RefreshList()
     else
@@ -935,6 +1123,7 @@ if Controls then
     end
     return false
   end
+  
   function CheckTag(UID, location)
     for i, tag in ipairs(Database.Tags) do
       if tag.UID == tostring(UID) then
@@ -971,7 +1160,7 @@ if Controls then
     local name = name or ""
     if uci ~= nil then
       if accessLevel >= 0 then --valid user
-        Uci.SetVariable(uci, "IsAdmin", accessLevel >= 1)
+        Uci.SetVariable(uci, "Admin", accessLevel >= 1)
         Uci.SetVariable(uci, "Locked", false)
         Uci.SetVariable(uci, "UserName", '"' .. name .. '"')
       else
@@ -1017,6 +1206,15 @@ if Controls then
     end
   end
   
+  function ClearUserEdit()
+    Controls.UserEditName.String = ""
+    Controls.UserEditUID.String = ""
+    Controls.UserEditAccessLevel.String = ""
+    Controls.UserEditPin.String = ""
+    Controls.UserEditSave.IsDisabled = true
+    Controls.UserEditUniquePin.Boolean = false
+  end
+  
   function ResetControls()
     -- Controls.Created.IsInvisible = Controls.LearningMode.String ~= "Read"
     -- Controls.History.IsInvisible = Controls.LearningMode.String ~= "Read"
@@ -1041,6 +1239,7 @@ if Controls then
   
     EnableListDelete()
     ResetControls()
+    ClearUserEdit()
     LoadDatabase()
     RefreshList()
     SetupSensors()
@@ -1052,11 +1251,23 @@ if Controls then
       return false
     end
     for _, tag in ipairs(Database.Tags) do
-      if tag.PIN == pin then
+      if tag.PIN == tonumber(pin) then
         return false
       end
     end
     return true
+  end
+  
+  function CheckUserEdit()
+    if
+      Controls.UserEditName.String ~= "" and Controls.UserEditUID.String ~= "" and
+        Controls.UserEditAccessLevel.String ~= "" and
+        (Controls.UserEditPin.String:len() >= 4 and Controls.UserEditPin.String:len() <= 12)
+     then
+      Controls.UserEditSave.IsDisabled = false
+    else
+      Controls.UserEditSave.IsDisabled = true
+    end
   end
   
   function EnableListDelete()
@@ -1072,6 +1283,21 @@ if Controls then
       local name = Controls["ListName"][i].String
       if RemoveTag(UID) then
         print("Removed " .. name)
+      end
+    end
+  end
+  for i, ctrl in ipairs(Controls.ListEdit) do
+    ctrl.EventHandler = function()
+      ClearUserEdit()
+      local UID = Controls["ListUID"][i].String
+      local ExistingTagIndex = IndexOfKV(Database.Tags, "UID", UID)
+      if ExistingTagIndex ~= nil then
+        local tag = Database.Tags[ExistingTagIndex]
+        Controls.UserEditName.String = tag.UserName
+        Controls.UserEditUID.String = tag.UID
+        Controls.UserEditAccessLevel.String = AccessLevelChoices[tag.AccessLevel + 1]
+        Controls.UserEditPin.String = tag.PIN
+        Controls.UserEditSave.IsDisabled = false
       end
     end
   end
@@ -1109,6 +1335,28 @@ if Controls then
     else
       Controls.UniquePin.Boolean = false
     end
+  end
+  Controls.UserEditClear.EventHandler = ClearUserEdit
+  Controls.UserEditUidGen.EventHandler = function()
+    Controls.UserEditUID.String = string.format("%08X", math.random(0, 0xFFFFFFFF))
+    CheckUserEdit()
+  end
+  Controls.UserEditUID.EventHandler = function(ctrl)
+    CheckUserEdit()
+  end
+  Controls.UserEditName.EventHandler = CheckUserEdit
+  Controls.UserEditAccessLevel.EventHandler = CheckUserEdit
+  Controls.UserEditPin.EventHandler = function(ctrl)
+    Controls.UserEditUniquePin.Boolean = VerifyUniquePin(ctrl.String)
+    CheckUserEdit()
+  end
+  Controls.UserEditSave.EventHandler = function()
+    local UID = Controls.UserEditUID.String
+    local accessLevel = Controls.UserEditAccessLevel.String == "Admin" and 1 or 0
+    local userName = Controls.UserEditName.String
+    local backupPin = tonumber(Controls.UserEditPin.String)
+    AddTag(UID, accessLevel, userName, backupPin)
+    ClearUserEdit()
   end
   
   Initialize()

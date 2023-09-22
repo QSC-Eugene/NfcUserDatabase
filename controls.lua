@@ -43,7 +43,8 @@ table.insert(
   ctrls,
   {
     Name = "UID",
-    ControlType = "Text",
+    ControlType = "Indicator",
+    IndicatorType = "Text",
     PinStyle = "None",
     UserPin = false,
   }
@@ -133,7 +134,7 @@ table.insert(
     PinStyle = "None",
     UserPin = false,
     Count = NumberOfLines,
-    Icon = "X Circle",
+    Icon = "Trash",
     IconType = "Icon"
   }
 )
@@ -278,3 +279,86 @@ table.insert(
     Count = (NumerOfInterfaces + NumerOfPinOnlyUCIs) > 1 and (NumerOfInterfaces + NumerOfPinOnlyUCIs) or 2,
   }
 )
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditName",
+    ControlType = "Text",
+    PinStyle = "Both",
+    UserPin = true,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditUID",
+    ControlType = "Text",
+    PinStyle = "Both",
+    UserPin = true,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditAccessLevel",
+    ControlType = "Text",
+    PinStyle = "Both",
+    UserPin = true,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditPin",
+    ControlType = "Text",
+    PinStyle = "Both",
+    UserPin = true,
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditSave",
+    ControlType = "Button",
+    ButtonType = "Trigger",
+    PinStyle = "Input",
+    UserPin = true,
+    Icon = "Save",
+    IconType = "Icon"
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditClear",
+    ControlType = "Button",
+    ButtonType = "Trigger",
+    PinStyle = "Input",
+    UserPin = true,
+    IconType = "Icon",
+    Icon = "X Circle",
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditUidGen",
+    ControlType = "Button",
+    ButtonType = "Trigger",
+    PinStyle = "Input",
+    UserPin = true,
+    IconType = "Icon",
+    Icon = "Refresh",
+  }
+)
+table.insert(
+  ctrls,
+  {
+    Name = "UserEditUniquePin",
+    ControlType = "Indicator",
+    IndicatorType = "Led",
+    PinStyle = "Output",
+    UserPin = true,
+  }
+)
+

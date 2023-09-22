@@ -25,7 +25,17 @@ Controls.LearningMode.Choices = ModeChoices
 Controls.LearningMode.String = ModeChoices[1]
 Controls.AccessLevel.Choices = AccessLevelChoices
 Controls.AccessLevel.String = AccessLevelChoices[1]
+Controls.UserEditAccessLevel.Choices = AccessLevelChoices
 Controls.LearningPanel.String = PanelChoices[1]
+
+function IndexOfKV(table, key, value)
+  for i, v in ipairs(table) do
+    if v[key] == value then
+      return i
+    end
+  end
+  return nil
+end
 
 function GetSensors()
   local Choices = {}
@@ -183,31 +193,44 @@ function ProcessTag(UID)
       tonumber(Controls.BackupPin.String)
     )
     ResetControls()
+    RefreshList()
     Controls.LearningMode.String = "Off"
   elseif mode == "Remove" then
     RemoveTag(UID)
     ResetControls()
+    RefreshList()
     Controls.LearningMode.String = "Off"
   end
 end
 
 function AddTag(UID, accessLevel, userName, backupPin)
+  -- Chech for existing tag
+
   if UID then
     local accessLevel = accessLevel or 0
     local userName = userName or "TAG:" .. UID
     local created = os.time()
     local backupPin = backupPin or ""
-    table.insert(
-      Database.Tags,
-      {
-        ["UID"] = UID,
-        ["AccessLevel"] = accessLevel, -- 0=User, 1=Admin, 2=SuperAdmin
-        ["UserName"] = userName,
-        ["Created"] = created,
-        ["PIN"] = backupPin,
-        ["History"] = {}
-      }
-    )
+    local ExistingTagIndex = IndexOfKV(Database.Tags, "UID", UID)
+    if ExistingTagIndex ~= nil then
+      print("Tag already exists, updating")
+      Database.Tags[ExistingTagIndex].AccessLevel = accessLevel
+      Database.Tags[ExistingTagIndex].UserName = userName
+      Database.Tags[ExistingTagIndex].PIN = backupPin
+    else
+      print("Adding Tag")
+      table.insert(
+        Database.Tags,
+        {
+          ["UID"] = UID,
+          ["AccessLevel"] = accessLevel, -- 0=User, 1=Admin, 2=SuperAdmin
+          ["UserName"] = userName,
+          ["Created"] = created,
+          ["PIN"] = backupPin,
+          ["History"] = {}
+        }
+      )
+    end
     rapidjson.dump(Database, DatabaseDir)
     RefreshList()
   else
@@ -226,6 +249,7 @@ function RemoveTag(UID)
   end
   return false
 end
+
 function CheckTag(UID, location)
   for i, tag in ipairs(Database.Tags) do
     if tag.UID == tostring(UID) then
@@ -262,7 +286,7 @@ function Login(accessLevel, name, uci)
   local name = name or ""
   if uci ~= nil then
     if accessLevel >= 0 then --valid user
-      Uci.SetVariable(uci, "IsAdmin", accessLevel >= 1)
+      Uci.SetVariable(uci, "Admin", accessLevel >= 1)
       Uci.SetVariable(uci, "Locked", false)
       Uci.SetVariable(uci, "UserName", '"' .. name .. '"')
     else
@@ -308,6 +332,15 @@ function RefreshList()
   end
 end
 
+function ClearUserEdit()
+  Controls.UserEditName.String = ""
+  Controls.UserEditUID.String = ""
+  Controls.UserEditAccessLevel.String = ""
+  Controls.UserEditPin.String = ""
+  Controls.UserEditSave.IsDisabled = true
+  Controls.UserEditUniquePin.Boolean = false
+end
+
 function ResetControls()
   -- Controls.Created.IsInvisible = Controls.LearningMode.String ~= "Read"
   -- Controls.History.IsInvisible = Controls.LearningMode.String ~= "Read"
@@ -332,6 +365,7 @@ function Initialize()
 
   EnableListDelete()
   ResetControls()
+  ClearUserEdit()
   LoadDatabase()
   RefreshList()
   SetupSensors()
@@ -343,11 +377,23 @@ function VerifyUniquePin(pin)
     return false
   end
   for _, tag in ipairs(Database.Tags) do
-    if tag.PIN == pin then
+    if tag.PIN == tonumber(pin) then
       return false
     end
   end
   return true
+end
+
+function CheckUserEdit()
+  if
+    Controls.UserEditName.String ~= "" and Controls.UserEditUID.String ~= "" and
+      Controls.UserEditAccessLevel.String ~= "" and
+      (Controls.UserEditPin.String:len() >= 4 and Controls.UserEditPin.String:len() <= 12)
+   then
+    Controls.UserEditSave.IsDisabled = false
+  else
+    Controls.UserEditSave.IsDisabled = true
+  end
 end
 
 function EnableListDelete()
@@ -363,6 +409,21 @@ for i, ctrl in ipairs(Controls.ListDelete) do
     local name = Controls["ListName"][i].String
     if RemoveTag(UID) then
       print("Removed " .. name)
+    end
+  end
+end
+for i, ctrl in ipairs(Controls.ListEdit) do
+  ctrl.EventHandler = function()
+    ClearUserEdit()
+    local UID = Controls["ListUID"][i].String
+    local ExistingTagIndex = IndexOfKV(Database.Tags, "UID", UID)
+    if ExistingTagIndex ~= nil then
+      local tag = Database.Tags[ExistingTagIndex]
+      Controls.UserEditName.String = tag.UserName
+      Controls.UserEditUID.String = tag.UID
+      Controls.UserEditAccessLevel.String = AccessLevelChoices[tag.AccessLevel + 1]
+      Controls.UserEditPin.String = tag.PIN
+      Controls.UserEditSave.IsDisabled = false
     end
   end
 end
@@ -400,6 +461,28 @@ Controls.BackupPin.EventHandler = function()
   else
     Controls.UniquePin.Boolean = false
   end
+end
+Controls.UserEditClear.EventHandler = ClearUserEdit
+Controls.UserEditUidGen.EventHandler = function()
+  Controls.UserEditUID.String = string.format("%08X", math.random(0, 0xFFFFFFFF))
+  CheckUserEdit()
+end
+Controls.UserEditUID.EventHandler = function(ctrl)
+  CheckUserEdit()
+end
+Controls.UserEditName.EventHandler = CheckUserEdit
+Controls.UserEditAccessLevel.EventHandler = CheckUserEdit
+Controls.UserEditPin.EventHandler = function(ctrl)
+  Controls.UserEditUniquePin.Boolean = VerifyUniquePin(ctrl.String)
+  CheckUserEdit()
+end
+Controls.UserEditSave.EventHandler = function()
+  local UID = Controls.UserEditUID.String
+  local accessLevel = Controls.UserEditAccessLevel.String == "Admin" and 1 or 0
+  local userName = Controls.UserEditName.String
+  local backupPin = tonumber(Controls.UserEditPin.String)
+  AddTag(UID, accessLevel, userName, backupPin)
+  ClearUserEdit()
 end
 
 Initialize()
